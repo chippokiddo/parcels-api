@@ -1,5 +1,12 @@
 # Parcels Backend API
 
+![Python](https://img.shields.io/badge/Python-3.9%2B-%233776AB?logo=python)
+![python-dotenv](https://img.shields.io/badge/python--dotenv-1.0.1%2B-blue?style=flat&logo=python)
+![Flask](https://img.shields.io/badge/Flask-3.1.0%2B-black?style=flat&logo=flask)
+![SQLite](https://img.shields.io/badge/SQLite3-%23003B57?style=flat&logo=sqlite)
+![License](https://img.shields.io/github/license/chippokiddo/parcels-api)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?&logo=buy-me-a-coffee&logoColor=0D0C22)](https://buymeacoffee.com/chippo)
+
 A backend API built with Flask for tracking and managing orders, with tracking details, archiving, and exporting capabilities.
 
 ## Overview
@@ -40,10 +47,10 @@ This repository contains only the backend portion of the Parcels order tracking 
 
 ## Requirements
 
-- Python 3.8+
-- Flask 2.0.0+
+- Python 3.9+
+- Flask 3.1.1
 - SQLite3
-- python-dotenv
+- python-dotenv 1.0.1
 
 ## Installation
 
