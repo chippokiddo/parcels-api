@@ -48,9 +48,9 @@ This repository contains only the backend portion of the Parcels order tracking 
 ## Requirements
 
 - Python 3.9+
-- Flask 3.1.1
+- Flask 3.1.0+
 - SQLite3
-- python-dotenv 1.0.1
+- python-dotenv 1.0.1+
 
 ## Installation
 
