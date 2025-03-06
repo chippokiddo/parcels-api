@@ -3,13 +3,9 @@
 ![Python](https://img.shields.io/badge/Python-3.9%2B-%233776AB?logo=python)
 ![python-dotenv](https://img.shields.io/badge/python--dotenv-1.0.1%2B-blue?style=flat&logo=python)
 ![Flask](https://img.shields.io/badge/Flask-3.1.0%2B-black?style=flat&logo=flask)
-![SQLite](https://img.shields.io/badge/SQLite3-%23003B57?style=flat&logo=sqlite)
+![SQLite](https://img.shields.io/badge/SQLite-3-%23003B57?style=flat&logo=sqlite)
 ![License](https://img.shields.io/github/license/chippokiddo/parcels-api)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?&logo=buy-me-a-coffee&logoColor=0D0C22)](https://buymeacoffee.com/chippo)
-
-A backend API built with Flask for tracking and managing orders, with tracking details, archiving, and exporting capabilities.
-
-## Overview
 
 This repository contains only the backend portion of the Parcels order tracking and management system. The frontend files (static assets and templates) are not included and should be integrated separately. This system allows users to manage orders with tracking details, archive completed/cancelled orders, and export data.
 
@@ -28,18 +24,18 @@ This repository contains only the backend portion of the Parcels order tracking 
 ```
 .
 ├── .github
-├── app.py                    # Main application entry point
-├── config.py                 # Application configuration
+├── app.py										# Main application entry point
+├── config.py									# Application configuration
 ├── models/
-│   └── orders.py             # Order database operations
+│   └── orders.py							# Order database operations
 ├── routes/
-│   ├── __init__.py           # Route registration
-│   ├── active_orders.py      # Active order routes
-│   └── archived_orders.py    # Archived order routes
+│   ├── __init__.py						# Route registration
+│   ├── active_orders.py			# Active order routes
+│   └── archived_orders.py		# Archived order routes
 ├── utils/
 │   ├── __init__.py
-│   ├── database.py           # Database connection utilities
-│   └── shipping.py           # Shipping carrier tracking URL generation
+│   ├── database.py						# Database connection utilities
+│   └── shipping.py						# Shipping carrier tracking URL generation
 ├── .env.example
 ├── .gitignore
 └── requirements.txt
@@ -47,40 +43,40 @@ This repository contains only the backend portion of the Parcels order tracking 
 
 ## Requirements
 
-- Python 3.9+
-- Flask 3.1.0+
-- SQLite3
-- python-dotenv 1.0.1+
+- [Python](https://www.python.org) 3.9+
+- [Flask](https://flask.palletsprojects.com/en/stable/) 3.1.0+
+- [SQLite](https://www.sqlite.org) 3
+- [python-dotenv](https://pypi.org/project/python-dotenv/) 1.0.1+
 
 ## Installation
 
 1. Clone the repository:
 
-   ```
+   ```bash
    git clone https://github.com/chippokiddo/parcels-api.git
    cd parcels-api
    ```
 
 2. Create and activate a virtual environment:
 
-   ```
+   ```bash
    python -m venv venv
    source venv/bin/activate	# On Windows: venv\Scripts\activate
    ```
 
 3. Install dependencies:
 
-   ```
+   ```python
    pip install -r requirements.txt
    ```
 
 4. Copy the example environment file and configure your environment variables:
 
-   ```
+   ```bash
    cp .env.example .env
    ```
 
-   Make sure to set `FLASK_SECRET_KEY` in your .env file.
+   Make sure to set `FLASK_SECRET_KEY` in your `.env` file.
 
 5. Initialize the database:
 
@@ -90,45 +86,28 @@ This repository contains only the backend portion of the Parcels order tracking 
    # python init_db.py
    ```
 
-   The database should include an 'orders' table with fields for:
-
-   - order_date
-   - vendor
-   - order_no
-   - item_name
-   - amount
-   - currency
-   - shipper
-   - tracking_no
-   - location
-   - delivery
-   - notes
-   - color
-   - order_status
-   - last_updated
-   - shipped_date
-
 ## Running the Application
 
 For production/deployment:
 
-```
+```bash
 flask run
 ```
 
 For development with debug mode:
+Modify `app.py`
 
-```
-# Modify app.py by commenting out:
+```python
+# Comment:
 # app = create_app()
-# 
-# And uncomment these lines:
-# if __name__ == "__main__":
-#     try:
-#         app = create_app()
-#         app.run(debug=True, host="0.0.0.0", port=5000)
-#     except Exception as e:
-#         logger.critical(f"Application failed to start: {str(e)}", exc_info=True)
+
+# Uncomment:
+if __name__ == "__main__":
+	try:
+		app = create_app()
+		app.run(debug=True, host="0.0.0.0", port=5000)
+	except Exception as e:
+		logger.critical(f"Application failed to start: {str(e)}", exc_info=True)
 ```
 
 The API will be available at `http://localhost:5000`.
@@ -139,49 +118,58 @@ The API will be available at `http://localhost:5000`.
 
 #### Active Orders
 
-- `GET /` - List all active orders
-- `GET /form` - Display order creation form (frontend integration point)
-- `GET /check_order_no/<order_no>` - Check if order number exists
-- `POST /submit_order` - Create a new order
-- `GET /edit_order/<order_no>` - Display order edit form (frontend integration point)
-- `POST /update_order/<order_no>` - Update an existing order
-- `POST /delete_order/<order_no>` - Delete an order
+| Method | Endpoint                     | Description                                              |
+| ------ | ---------------------------- | -------------------------------------------------------- |
+| GET    | `/`                          | List all active orders                                   |
+| GET    | `/form`                      | Display order creation form (frontend integration point) |
+| GET    | `/check_order_no/<order_no>` | Check if an order number exists                          |
+| POST   | `/submit_order`              | Create a new order                                       |
+| GET    | `/edit_order/<order_no>`     | Display order edit form (frontend integration point)     |
+| POST   | `/update_order/<order_no>`   | Update an existing order                                 |
+| POST   | `/delete_order/<order_no>`   | Delete an order                                          |
 
 #### Archived Orders
 
-- `GET /archive` - Display archived orders with optional filtering
-- `GET /archive/export_csv` - Export archived orders as CSV
+| Method | Endpoint              | Description                                |
+| ------ | --------------------- | ------------------------------------------ |
+| GET    | `/archive`            | List archived orders with optional filters |
+| GET    | `/archive/export_csv` | Export archived orders as CSV              |
 
 ### Data Models
 
-#### Order Model
-
-- `order_date` - Date the order was placed
-- `vendor` - Supplier or vendor name
-- `order_no` - Unique order number
-- `item_name` - Description of ordered item
-- `amount` - Order amount
-- `currency` - Currency for the amount
-- `shipper` - Shipping carrier (FedEx, etc.)
-- `tracking_no` - Shipment tracking number
-- `location` - Location information
-- `delivery` - Delivery details
-- `notes` - Additional notes
-- `color` - Color code or information
-- `order_status` - Status (active, completed, cancelled)
-- `last_updated` - Last update timestamp
-- `shipped_date` - Date the order was shipped
+| Field          | Description                          |
+| -------------- | ------------------------------------ |
+| `order_date`   | Date the order was placed            |
+| `vendor`       | Supplier name                        |
+| `order_no`     | Unique order identifier              |
+| `item_name`    | Ordered item description             |
+| `amount`       | Order amount                         |
+| `currency`     | Payment currency                     |
+| `shipper`      | Shipping carrier (FedEx, UPS, etc.)  |
+| `tracking_no`  | Shipment tracking number             |
+| `location`     | Current location                     |
+| `delivery`     | Delivery details                     |
+| `notes`        | Additional remarks                   |
+| `color`        | Order color indicator                |
+| `order_status` | Status (active, completed, canceled) |
+| `last_updated` | Last modification timestamp          |
+| `shipped_date` | Shipment dispatch date               |
 
 ## Frontend Integration
 
 This repository contains only the backend API code. To integrate with a frontend:
 
 1. Create template files that match the routes in the application:
-   - `templates/index.html` - For displaying active orders
-   - `templates/form.html` - For the order creation form
-   - `templates/edit.html` - For the order editing form
-   - `templates/archive.html` - For displaying archived orders
+
+   | File                     | Purpose                        |
+   | ------------------------ | ------------------------------ |
+   | `templates/index.html`   | For displaying active orders   |
+   | `templates/form.html`    | For the order creation form    |
+   | `templates/edit.html`    | For the order editing form     |
+   | `templates.archive.html` | For displaying archived orders |
+
 2. Make sure your frontend forms match the expected form field names in the routes
+
 3. Add static files (CSS, JavaScript) for frontend interactions
 
 ## Configuration
@@ -189,7 +177,7 @@ This repository contains only the backend API code. To integrate with a frontend
 The application uses environment variables for configuration:
 
 - `FLASK_SECRET_KEY` - Secret key for session security (required)
-- `DATABASE_PATH` - Path to SQLite database (defaults to "identifier.sqlite")
+- `DATABASE_PATH` - Path to SQLite database (defaults to `identifier.sqlite`)
 
 You can extend the `SHIPPING_CARRIERS` dictionary in `config.py` to add more shipping carriers for tracking URL generation.
 
@@ -220,10 +208,10 @@ pip install gunicorn
 gunicorn --bind 0.0.0.0:5000 app:app
 ```
 
-## Contributing
+## Contribute
+
+Contributions are welcome! Follow these steps to contribute:
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Commit your changes (`git commit -m 'Add some feature'`)
-4. Push to the branch (`git push origin feature/your-feature`)
-5. Create a new Pull Request
+2. Create a branch with your feature or bug fix
+3. Submit a pull request for review
