@@ -103,9 +103,15 @@ def update_order(order_no: str):
         }
 
         OrdersDB.update_order(order_no, order_data)
+
+        source = request.form.get("source", "active_orders.index")
+
+        redirect_url = url_for(source)
+
         return jsonify({
             "success": True,
-            "message": "Order updated successfully!"
+            "message": "Order updated successfully!",
+            "redirect": redirect_url
         })
     except Exception as e:
         logger.error(f"Error updating order: {str(e)}", exc_info=True)
@@ -126,7 +132,13 @@ def edit_order(order_no: str):
                 "message": "Order not found"
             }), 404
 
-        source = "archive" if request.referrer and "archive" in request.referrer else "index"
+        source = request.args.get('source')
+        if not source:
+            if request.referrer and "archive" in request.referrer:
+                source = "archived_orders.archive"
+            else:
+                source = "active_orders.index"
+
         return render_template("edit.html", order=order, source=source)
 
     except Exception as e:
@@ -142,7 +154,10 @@ def delete_order(order_no: str):
     """Delete an order."""
     try:
         OrdersDB.delete_order(order_no)
-        return redirect(url_for("active_orders.index"))
+
+        source = request.form.get("source", "active_orders.index")
+
+        return redirect(url_for(source))
     except Exception as e:
         logger.error(f"Error deleting order: {str(e)}", exc_info=True)
         return "Error deleting order", 500
