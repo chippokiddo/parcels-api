@@ -24,18 +24,18 @@ This repository contains only the backend portion of the Parcels order tracking 
 ```
 .
 ├── .github
-├── app.py										# Main application entry point
-├── config.py									# Application configuration
+├── app.py				# Main application entry point
+├── config.py				# Application configuration
 ├── models/
-│   └── orders.py							# Order database operations
+│   └── orders.py			# Order database operations
 ├── routes/
-│   ├── __init__.py						# Route registration
-│   ├── active_orders.py			# Active order routes
+│   ├── __init__.py			# Route registration
+│   ├── active_orders.py		# Active order routes
 │   └── archived_orders.py		# Archived order routes
 ├── utils/
 │   ├── __init__.py
-│   ├── database.py						# Database connection utilities
-│   └── shipping.py						# Shipping carrier tracking URL generation
+│   ├── database.py			# Database connection utilities
+│   └── shipping.py			# Shipping carrier tracking URL generation
 ├── .env.example
 ├── .gitignore
 └── requirements.txt
