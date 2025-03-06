@@ -3,11 +3,18 @@
 ![Python](https://img.shields.io/badge/Python-3.9%2B-%233776AB?logo=python)
 ![python-dotenv](https://img.shields.io/badge/python--dotenv-1.0.1%2B-blue?style=flat&logo=python)
 ![Flask](https://img.shields.io/badge/Flask-3.1.0%2B-black?style=flat&logo=flask)
-![SQLite](https://img.shields.io/badge/SQLite-3-%23003B57?style=flat&logo=sqlite)
+![SQLite](https://img.shields.io/badge/SQLite-3%2B-%23003B57?style=flat&logo=sqlite)
 ![License](https://img.shields.io/github/license/chippokiddo/parcels-api)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?&logo=buy-me-a-coffee&logoColor=0D0C22)](https://buymeacoffee.com/chippo)
 
 This repository contains only the backend portion of the Parcels order tracking and management system. The frontend files (static assets and templates) are not included and should be integrated separately. This system allows users to manage orders with tracking details, archive completed/cancelled orders, and export data.
+
+## Dependencies
+
+- [Python](https://www.python.org)
+- [Flask](https://flask.palletsprojects.com/en/stable/)
+- [SQLite](https://www.sqlite.org)
+- [python-dotenv](https://pypi.org/project/python-dotenv/)
 
 ## Features
 
@@ -40,13 +47,6 @@ This repository contains only the backend portion of the Parcels order tracking 
 ├── .gitignore
 └── requirements.txt
 ```
-
-## Requirements
-
-- [Python](https://www.python.org) 3.9+
-- [Flask](https://flask.palletsprojects.com/en/stable/) 3.1.0+
-- [SQLite](https://www.sqlite.org) 3
-- [python-dotenv](https://pypi.org/project/python-dotenv/) 1.0.1+
 
 ## Installation
 
