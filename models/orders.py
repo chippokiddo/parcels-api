@@ -186,15 +186,25 @@ class OrdersDB:
     def get_archived_orders(
             status_filter: Optional[str] = None,
             year_filter: Optional[str] = None,
-            month_filter: Optional[str] = None
-    ) -> Tuple[List[Dict], List[str], List[Tuple[str, str]]]:
-        """Get all archived orders with optional filters.
+            month_filter: Optional[str] = None,
+            page: int = 1,
+            limit: int = 10
+    ) -> Tuple[List[Dict], List[str], List[Tuple[str, str]], Dict]:
+        """Get archived orders with optional filters and pagination.
+
+        Args:
+            status_filter: Filter by order status
+            year_filter: Filter by year
+            month_filter: Filter by month
+            page: Page number (starting from 1)
+            limit: Number of orders per page
 
         Returns:
             Tuple containing:
-                - List of orders
+                - List of orders for the current page
                 - Available years for filtering
                 - Available months for filtering
+                - Pagination information dictionary
         """
         with get_db_connection() as conn:
             try:
@@ -218,8 +228,7 @@ class OrdersDB:
                     ('10', 'October'), ('11', 'November'), ('12', 'December')
                 ]
 
-                query = """
-                    SELECT *
+                base_query = """
                     FROM orders 
                     WHERE order_status IN ('completed', 'cancelled')
                 """
@@ -227,23 +236,42 @@ class OrdersDB:
                 query_params = []
 
                 if status_filter:
-                    query += " AND order_status = ?"
+                    base_query += " AND order_status = ?"
                     query_params.append(status_filter)
 
                 if year_filter:
-                    query += " AND strftime('%Y', order_date) = ?"
+                    base_query += " AND strftime('%Y', order_date) = ?"
                     query_params.append(year_filter)
 
                 if month_filter:
-                    query += " AND strftime('%m', order_date) = ?"
+                    base_query += " AND strftime('%m', order_date) = ?"
                     query_params.append(month_filter)
 
-                query += " ORDER BY order_date DESC, last_updated DESC"
+                count_query = f"SELECT COUNT(*) as total {base_query}"
+                cursor.execute(count_query, query_params)
+                total_count = cursor.fetchone()['total']
 
-                cursor.execute(query, query_params)
+                offset = (page - 1) * limit
+                total_pages = (total_count + limit - 1) // limit
+
+                data_query = f"""
+                    SELECT * {base_query}
+                    ORDER BY order_date DESC, last_updated DESC
+                    LIMIT ? OFFSET ?
+                """
+                cursor.execute(data_query, query_params + [limit, offset])
                 orders = [format_order_dict(row) for row in cursor.fetchall()]
 
-                return orders, available_years, available_months
+                pagination = {
+                    'current_page': page,
+                    'total_pages': total_pages,
+                    'total_count': total_count,
+                    'has_prev': page > 1,
+                    'has_next': page < total_pages,
+                    'limit': limit
+                }
+
+                return orders, available_years, available_months, pagination
 
             except Exception as e:
                 logger.error(f"Error getting archived orders: {str(e)}", exc_info=True)

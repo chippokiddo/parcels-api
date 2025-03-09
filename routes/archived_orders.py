@@ -11,28 +11,39 @@ archived_orders_bp = Blueprint('archived_orders', __name__, template_folder='tem
 
 @archived_orders_bp.route("")
 def archive():
-    """Display archived orders without pagination."""
+    """Display archived orders with pagination."""
     try:
         status_filter = request.args.get('status')
         month_filter = request.args.get('month')
         year_filter = request.args.get('year')
 
-        logger.info(f"Archive request: status={status_filter}, month={month_filter}, year={year_filter}")
+        try:
+            page = int(request.args.get('page', 1))
+            if page < 1:
+                page = 1
+        except ValueError:
+            page = 1
 
-        orders, available_years, available_months = OrdersDB.get_archived_orders(
+        limit = 10  # Fixed limit of 10 orders per page
+
+        logger.info(f"Archive request: status={status_filter}, month={month_filter}, year={year_filter}, page={page}")
+
+        orders, available_years, available_months, pagination = OrdersDB.get_archived_orders(
             status_filter=status_filter,
             year_filter=year_filter,
-            month_filter=month_filter
+            month_filter=month_filter,
+            page=page,
+            limit=limit
         )
 
-        logger.info(f"Retrieved {len(orders)} archived orders")
+        logger.info(f"Retrieved {len(orders)} archived orders (page {page} of {pagination['total_pages']})")
 
         return render_template(
             "archive.html",
             orders=orders,
             available_years=available_years,
             available_months=available_months,
-            pagination=None
+            pagination=pagination
         )
     except Exception as e:
         logger.error(f"Error in archive route: {str(e)}", exc_info=True)
@@ -44,7 +55,12 @@ def export_archive_csv():
     """Export archived orders to CSV."""
     try:
         status_filter = request.args.get('status')
-        date_filter = request.args.get('date')
+        year_filter = request.args.get('year')
+        month_filter = request.args.get('month')
+
+        date_filter = None
+        if year_filter and month_filter:
+            date_filter = f"{year_filter}-{month_filter}"
 
         archived_orders = OrdersDB.export_archived_orders(status_filter, date_filter)
 
@@ -63,8 +79,10 @@ def export_archive_csv():
         filename = "archived_orders"
         if status_filter:
             filename += f"_{status_filter}"
-        if date_filter:
-            filename += f"_{date_filter}"
+        if year_filter:
+            filename += f"_{year_filter}"
+        if month_filter:
+            filename += f"_{month_filter}"
         filename += ".csv"
 
         response = make_response(output.getvalue())
