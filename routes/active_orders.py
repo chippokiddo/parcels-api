@@ -46,7 +46,7 @@ def submit_order():
         form_data = {
             field: request.form.get(field, '').strip()
             for field in [
-                'vendor', 'order_no', 'item_name', 'amount',
+                'order_date', 'vendor', 'order_no', 'item_name', 'amount',
                 'currency', 'shipper', 'tracking_no', 'location',
                 'delivery', 'notes', 'color'
             ]
