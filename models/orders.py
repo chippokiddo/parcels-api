@@ -6,6 +6,7 @@ from config import logger
 from utils.database import get_db_connection
 from utils.shipping import get_tracking_url
 
+
 def format_order_dict(order: sqlite3.Row) -> Dict:
     """Format order dictionary and handle None values."""
     if not order:
@@ -103,7 +104,7 @@ class OrdersDB:
                         notes, color, order_status, last_updated
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
                 """, (
-                    current_datetime,
+                    order_data['order_date'],
                     order_data['vendor'],
                     order_data['order_no'],
                     order_data['item_name'],
