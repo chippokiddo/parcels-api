@@ -101,7 +101,7 @@ class OrdersDB:
                     INSERT INTO orders (
                         order_date, vendor, order_no, item_name, amount,
                         currency, shipper, tracking_no, location, delivery,
-                        notes, color, order_status, last_updated
+                        notes, color, order_status, last_updated, shipped_date
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
                 """, (
                     order_data['order_date'],
@@ -116,7 +116,8 @@ class OrdersDB:
                     order_data.get('delivery', ''),
                     order_data.get('notes', ''),
                     order_data.get('color', ''),
-                    current_datetime
+                    current_datetime,
+                    order_data.get('shipped_date', ''),
                 ))
                 conn.commit()
             except Exception as e:
