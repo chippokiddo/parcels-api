@@ -102,7 +102,7 @@ class OrdersDB:
                         order_date, vendor, order_no, item_name, amount,
                         currency, shipper, tracking_no, location, delivery,
                         notes, color, order_status, last_updated, shipped_date
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     order_data['order_date'],
                     order_data['vendor'],
