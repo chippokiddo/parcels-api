@@ -8,7 +8,9 @@ from utils.shipping import get_tracking_url
 
 
 def format_order_dict(order: sqlite3.Row) -> Dict:
-    """Format order dictionary and handle None values."""
+    """
+    Format order dictionary and handle None values
+    """
     if not order:
         return {}
 
@@ -29,7 +31,9 @@ def format_order_dict(order: sqlite3.Row) -> Dict:
 class OrdersDB:
     @staticmethod
     def get_active_orders() -> List[Dict]:
-        """Retrieve all active orders."""
+        """
+        Retrieve all active orders
+        """
         with get_db_connection() as conn:
             try:
                 cursor = conn.cursor()
@@ -46,7 +50,9 @@ class OrdersDB:
 
     @staticmethod
     def get_order(order_no: str) -> Optional[Dict]:
-        """Retrieve a specific order regardless of status."""
+        """
+        Retrieve a specific order regardless of status
+        """
         with get_db_connection() as conn:
             try:
                 cursor = conn.cursor()
@@ -66,7 +72,9 @@ class OrdersDB:
             order_no: str,
             current_order: Optional[str] = None
     ) -> bool:
-        """Check if an order number already exists."""
+        """
+        Check if an order number already exists
+        """
         with get_db_connection() as conn:
             try:
                 cursor = conn.cursor()
@@ -75,15 +83,13 @@ class OrdersDB:
                         SELECT 1 
                         FROM orders 
                         WHERE order_no = ? 
-                        AND order_status = 'active'
                         AND order_no != ?
                     """, (order_no, current_order))
                 else:
                     cursor.execute("""
                         SELECT 1 
                         FROM orders 
-                        WHERE order_no = ? 
-                        AND order_status = 'active'
+                        WHERE order_no = ?
                     """, (order_no,))
                 return cursor.fetchone() is not None
             except Exception as e:
@@ -92,7 +98,9 @@ class OrdersDB:
 
     @staticmethod
     def create_order(order_data: Dict) -> None:
-        """Create a new order."""
+        """
+        Create a new order
+        """
         with get_db_connection() as conn:
             try:
                 current_datetime = datetime.now().strftime("%Y-%m-%d")
@@ -116,8 +124,9 @@ class OrdersDB:
                     order_data.get('delivery', ''),
                     order_data.get('notes', ''),
                     order_data.get('color', ''),
+                    order_data.get('order_status', ''),
                     current_datetime,
-                    order_data.get('shipped_date', ''),
+                    order_data.get('shipped_date', '')
                 ))
                 conn.commit()
             except Exception as e:
@@ -127,7 +136,9 @@ class OrdersDB:
 
     @staticmethod
     def update_order(order_no: str, order_data: Dict) -> None:
-        """Update an existing order."""
+        """
+        Update an existing order
+        """
         with get_db_connection() as conn:
             try:
                 cursor = conn.cursor()
@@ -173,7 +184,9 @@ class OrdersDB:
 
     @staticmethod
     def delete_order(order_no: str) -> None:
-        """Delete an order."""
+        """
+        Delete an order
+        """
         with get_db_connection() as conn:
             try:
                 cursor = conn.cursor()
@@ -185,14 +198,74 @@ class OrdersDB:
                 raise
 
     @staticmethod
+    def get_archived_orders_totals(
+            status_filter: Optional[str] = None,
+            year_filter: Optional[str] = None,
+            month_filter: Optional[str] = None
+    ) -> Dict[str, float]:
+        """
+        Get currency totals for archived orders with filters applied
+
+        Returns:
+            Dictionary with currency codes as keys and total amounts as values
+        """
+        with get_db_connection() as conn:
+            try:
+                cursor = conn.cursor()
+
+                base_query = """
+                    SELECT currency, SUM(CAST(amount as REAL)) as total
+                    FROM orders 
+                    WHERE order_status IN ('completed', 'cancelled')
+                    AND amount IS NOT NULL 
+                    AND amount != ''
+                    AND currency IS NOT NULL 
+                    AND currency != ''
+                """
+
+                query_params = []
+
+                if status_filter:
+                    base_query += " AND order_status = ?"
+                    query_params.append(status_filter)
+
+                if year_filter:
+                    base_query += " AND strftime('%Y', order_date) = ?"
+                    query_params.append(year_filter)
+
+                if month_filter:
+                    base_query += " AND strftime('%m', order_date) = ?"
+                    query_params.append(month_filter)
+
+                base_query += " GROUP BY currency ORDER BY currency"
+
+                cursor.execute(base_query, query_params)
+                results = cursor.fetchall()
+
+                # Convert to dictionary
+                totals = {}
+                for row in results:
+                    currency = row['currency']
+                    total = row['total']
+                    if currency and total is not None:
+                        totals[currency] = total
+
+                return totals
+
+            except Exception as e:
+                logger.error(f"Error getting archived orders totals: {str(e)}", exc_info=True)
+                return {}
+
+    @staticmethod
     def get_archived_orders(
             status_filter: Optional[str] = None,
             year_filter: Optional[str] = None,
             month_filter: Optional[str] = None,
             page: int = 1,
             limit: int = 10
-    ) -> Tuple[List[Dict], List[str], List[Tuple[str, str]], Dict]:
-        """Get archived orders with optional filters and pagination.
+    ) -> Tuple[List[Dict], List[str], List[Tuple[str, str]], Dict, Dict[str, float]]:
+        """
+        Get archived orders with optional filters and pagination
 
         Args:
             status_filter: Filter by order status
@@ -207,6 +280,7 @@ class OrdersDB:
                 - Available years for filtering
                 - Available months for filtering
                 - Pagination information dictionary
+                - Currency totals dictionary
         """
         with get_db_connection() as conn:
             try:
@@ -273,7 +347,12 @@ class OrdersDB:
                     'limit': limit
                 }
 
-                return orders, available_years, available_months, pagination
+                # Get currency totals
+                currency_totals = OrdersDB.get_archived_orders_totals(
+                    status_filter, year_filter, month_filter
+                )
+
+                return orders, available_years, available_months, pagination, currency_totals
 
             except Exception as e:
                 logger.error(f"Error getting archived orders: {str(e)}", exc_info=True)
@@ -284,7 +363,9 @@ class OrdersDB:
             status_filter: Optional[str] = None,
             date_filter: Optional[str] = None
     ) -> List[sqlite3.Row]:
-        """Export archived orders with optional filters."""
+        """
+        Export archived orders with optional filters
+        """
         with get_db_connection() as conn:
             try:
                 query = """
