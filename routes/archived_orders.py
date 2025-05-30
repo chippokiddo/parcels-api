@@ -11,7 +11,9 @@ archived_orders_bp = Blueprint('archived_orders', __name__, template_folder='tem
 
 @archived_orders_bp.route("")
 def archive():
-    """Display archived orders with pagination."""
+    """
+    Display archived orders with pagination
+    """
     try:
         status_filter = request.args.get('status')
         month_filter = request.args.get('month')
@@ -28,7 +30,7 @@ def archive():
 
         logger.info(f"Archive request: status={status_filter}, month={month_filter}, year={year_filter}, page={page}")
 
-        orders, available_years, available_months, pagination = OrdersDB.get_archived_orders(
+        orders, available_years, available_months, pagination, currency_totals = OrdersDB.get_archived_orders(
             status_filter=status_filter,
             year_filter=year_filter,
             month_filter=month_filter,
@@ -37,13 +39,15 @@ def archive():
         )
 
         logger.info(f"Retrieved {len(orders)} archived orders (page {page} of {pagination['total_pages']})")
+        logger.info(f"Currency totals: {currency_totals}")
 
         return render_template(
             "archive.html",
             orders=orders,
             available_years=available_years,
             available_months=available_months,
-            pagination=pagination
+            pagination=pagination,
+            currency_totals=currency_totals
         )
     except Exception as e:
         logger.error(f"Error in archive route: {str(e)}", exc_info=True)
@@ -52,7 +56,9 @@ def archive():
 
 @archived_orders_bp.route("/export_csv")
 def export_archive_csv():
-    """Export archived orders to CSV."""
+    """
+    Export archived orders to CSV
+    """
     try:
         status_filter = request.args.get('status')
         year_filter = request.args.get('year')
