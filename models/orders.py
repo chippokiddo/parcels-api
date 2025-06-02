@@ -32,7 +32,7 @@ class OrdersDB:
     @staticmethod
     def get_active_orders() -> List[Dict]:
         """
-        Retrieve all active orders
+        Retrieve all active orders (including those with empty status)
         """
         with get_db_connection() as conn:
             try:
@@ -40,7 +40,7 @@ class OrdersDB:
                 cursor.execute("""
                     SELECT *
                     FROM orders 
-                    WHERE order_status = 'active'
+                    WHERE order_status NOT IN ('completed', 'cancelled')
                     ORDER BY order_date DESC, last_updated DESC
                 """)
                 return [format_order_dict(row) for row in cursor.fetchall()]
