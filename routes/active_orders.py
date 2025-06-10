@@ -39,7 +39,9 @@ def check_order_no(order_no: str):
 
 @active_orders_bp.route("/submit_order", methods=["POST"])
 def submit_order():
-    """Handle order submission."""
+    """
+    Handle order submission
+    """
     try:
         required_fields = ['vendor', 'order_no', 'item_name', 'amount']
 
@@ -48,7 +50,7 @@ def submit_order():
             for field in [
                 'order_date', 'vendor', 'order_no', 'item_name', 'amount',
                 'currency', 'shipper', 'tracking_no', 'location',
-                'delivery', 'notes', 'color'
+                'delivery', 'notes', 'color', 'shipped_date', 'order_status'
             ]
         }
 
