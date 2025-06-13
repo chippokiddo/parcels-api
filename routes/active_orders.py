@@ -1,33 +1,45 @@
-from datetime import datetime
-
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 
 from config import logger
 from models.orders import OrdersDB
+from utils.error_handlers import handle_api_error, handle_route_error
+from utils.request_helpers import extract_form_data, validate_required_fields
+from utils.response_helpers import success_response, error_response
+from utils.route_helpers import (
+    build_order_data_from_form,
+    determine_redirect_source,
+    get_order_form_fields,
+    get_required_order_fields
+)
 
 active_orders_bp = Blueprint('active_orders', __name__, template_folder='templates')
 
 
 @active_orders_bp.route("/")
 def index():
-    """Display active orders."""
+    """
+    Display active orders
+    """
     try:
         orders = OrdersDB.get_active_orders()
         return render_template("index.html", orders=orders)
     except Exception as e:
-        logger.error(f"Error in index route: {str(e)}", exc_info=True)
-        return "An error occurred loading the page", 500
+        return handle_route_error(e, "index route", logger, "An error occurred loading the page")
 
 
 @active_orders_bp.route("/form")
 def form():
-    """Display order form."""
+    """
+    Display order form
+    """
     return render_template("form.html")
 
 
 @active_orders_bp.route("/check_order_no/<order_no>")
 def check_order_no(order_no: str):
-    """Check if order number exists."""
+    """
+    Check if order number exists
+    """
     try:
         current_order = request.args.get('current')
         exists = OrdersDB.check_order_exists(order_no, current_order)
@@ -43,72 +55,35 @@ def submit_order():
     Handle order submission
     """
     try:
-        required_fields = ['vendor', 'order_no', 'item_name', 'amount']
+        form_data = extract_form_data(request, get_order_form_fields())
 
-        form_data = {
-            field: request.form.get(field, '').strip()
-            for field in [
-                'order_date', 'vendor', 'order_no', 'item_name', 'amount',
-                'currency', 'shipper', 'tracking_no', 'location',
-                'delivery', 'notes', 'color', 'shipped_date', 'order_status'
-            ]
-        }
-
-        missing_fields = [field for field in required_fields if not form_data.get(field)]
+        missing_fields = validate_required_fields(form_data, get_required_order_fields())
         if missing_fields:
-            return jsonify({
-                "success": False,
-                "message": f"Missing required fields: {', '.join(missing_fields)}"
-            }), 400
+            return error_response(
+                f"Missing required fields: {', '.join(missing_fields)}",
+                400
+            )
 
         if OrdersDB.check_order_exists(form_data['order_no']):
-            return jsonify({
-                "success": False,
-                "message": "An active order with this number already exists"
-            }), 400
+            return error_response("An active order with this number already exists", 400)
 
         OrdersDB.create_order(form_data)
-        return jsonify({
-            "success": True,
-            "message": "Order created successfully!"
-        })
+        return success_response("Order created successfully!")
 
     except Exception as e:
-        logger.error(f"Error in submit_order: {str(e)}", exc_info=True)
-        return jsonify({
-            "success": False,
-            "message": "Server error occurred"
-        }), 500
+        return handle_api_error(e, "submit_order", logger, "Server error occurred")
 
 
 @active_orders_bp.route("/update_order/<order_no>", methods=["POST"])
 def update_order(order_no: str):
-    """Handle order updates."""
+    """
+    Handle order updates
+    """
     try:
-        current_datetime = datetime.now().strftime("%Y-%m-%d")
-        order_data = {
-            "order_date": request.form.get("order_date", "").strip(),
-            "vendor": request.form.get("vendor", "").strip(),
-            "order_no": order_no,
-            "item_name": request.form.get("item_name", "").strip(),
-            "shipper": request.form.get("shipper", "").strip().upper(),
-            "tracking_no": request.form.get("tracking_no", "").strip(),
-            "location": request.form.get("location", "").strip(),
-            "amount": request.form.get("amount", "").strip(),
-            "currency": request.form.get("currency", "").strip(),
-            "last_updated": current_datetime,
-            "shipped_date": request.form.get("shipped_date", "").strip(),
-            "notes": request.form.get("notes", "").strip(),
-            "order_status": request.form.get("order_status", "active").strip(),
-            "color": request.form.get("color", "").strip(),
-            "delivery": request.form.get("delivery", "").strip(),
-        }
-
+        order_data = build_order_data_from_form(order_no)
         OrdersDB.update_order(order_no, order_data)
 
-        source = request.form.get("source", "active_orders.index")
-
-        redirect_url = url_for(source)
+        redirect_url = url_for(determine_redirect_source())
 
         return jsonify({
             "success": True,
@@ -125,7 +100,9 @@ def update_order(order_no: str):
 
 @active_orders_bp.route("/edit_order/<order_no>")
 def edit_order(order_no: str):
-    """Display order edit form."""
+    """
+    Display order edit form
+    """
     try:
         order = OrdersDB.get_order(order_no)
         if not order:
@@ -134,13 +111,7 @@ def edit_order(order_no: str):
                 "message": "Order not found"
             }), 404
 
-        source = request.args.get('source')
-        if not source:
-            if request.referrer and "archive" in request.referrer:
-                source = "archived_orders.archive"
-            else:
-                source = "active_orders.index"
-
+        source = determine_redirect_source()
         return render_template("edit.html", order=order, source=source)
 
     except Exception as e:
@@ -153,13 +124,12 @@ def edit_order(order_no: str):
 
 @active_orders_bp.route("/delete_order/<order_no>", methods=["POST"])
 def delete_order(order_no: str):
-    """Delete an order."""
+    """
+    Delete an order
+    """
     try:
         OrdersDB.delete_order(order_no)
-
-        source = request.form.get("source", "active_orders.index")
-
+        source = determine_redirect_source()
         return redirect(url_for(source))
     except Exception as e:
-        logger.error(f"Error deleting order: {str(e)}", exc_info=True)
-        return "Error deleting order", 500
+        return handle_route_error(e, "delete_order", logger, "Error deleting order")

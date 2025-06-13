@@ -3,29 +3,15 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from config import logger
+from utils.data_processing import process_record_data
 from utils.database import get_db_connection
-from utils.shipping import get_tracking_url
-
-
-def format_order_dict(order: sqlite3.Row) -> Dict:
-    """
-    Format order dictionary and handle None values
-    """
-    if not order:
-        return {}
-
-    order_dict = dict(order)
-    for key in order_dict:
-        if order_dict[key] is None:
-            order_dict[key] = ''
-
-    if order_dict.get('shipper') and order_dict.get('tracking_no'):
-        order_dict['tracking_url'] = get_tracking_url(
-            order_dict['shipper'],
-            order_dict['tracking_no']
-        )
-
-    return order_dict
+from utils.order_helpers import format_order_dict, get_order_not_null_columns
+from utils.pagination import create_pagination_info
+from utils.query_builders import (
+    build_date_filter_conditions,
+    build_status_filter_conditions,
+    combine_filter_conditions
+)
 
 
 class OrdersDB:
@@ -38,11 +24,11 @@ class OrdersDB:
             try:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    SELECT *
-                    FROM orders 
-                    WHERE order_status NOT IN ('completed', 'cancelled')
-                    ORDER BY order_date DESC, last_updated DESC
-                """)
+                               SELECT *
+                               FROM orders
+                               WHERE order_status NOT IN ('completed', 'cancelled')
+                               ORDER BY order_date DESC, last_updated DESC
+                               """)
                 return [format_order_dict(row) for row in cursor.fetchall()]
             except Exception as e:
                 logger.error(f"Error getting active orders: {str(e)}")
@@ -57,10 +43,10 @@ class OrdersDB:
             try:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    SELECT *
-                    FROM orders 
-                    WHERE order_no = ?
-                """, (order_no,))
+                               SELECT *
+                               FROM orders
+                               WHERE order_no = ?
+                               """, (order_no,))
                 order = cursor.fetchone()
                 return format_order_dict(order) if order else None
             except Exception as e:
@@ -80,17 +66,17 @@ class OrdersDB:
                 cursor = conn.cursor()
                 if current_order:
                     cursor.execute("""
-                        SELECT 1 
-                        FROM orders 
-                        WHERE order_no = ? 
-                        AND order_no != ?
-                    """, (order_no, current_order))
+                                   SELECT 1
+                                   FROM orders
+                                   WHERE order_no = ?
+                                     AND order_no != ?
+                                   """, (order_no, current_order))
                 else:
                     cursor.execute("""
-                        SELECT 1 
-                        FROM orders 
-                        WHERE order_no = ?
-                    """, (order_no,))
+                                   SELECT 1
+                                   FROM orders
+                                   WHERE order_no = ?
+                                   """, (order_no,))
                 return cursor.fetchone() is not None
             except Exception as e:
                 logger.error(f"Error checking if order exists: {str(e)}")
@@ -105,29 +91,33 @@ class OrdersDB:
             try:
                 current_datetime = datetime.now().strftime("%Y-%m-%d")
                 cursor = conn.cursor()
+
+                processed_data = process_record_data(order_data, get_order_not_null_columns())
+
                 cursor.execute("""
-                    INSERT INTO orders (
-                        order_date, vendor, order_no, item_name, amount,
-                        currency, shipper, tracking_no, location, delivery,
-                        notes, color, order_status, last_updated, shipped_date
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    order_data['order_date'],
-                    order_data['vendor'],
-                    order_data['order_no'],
-                    order_data['item_name'],
-                    order_data['amount'],
-                    order_data.get('currency', ''),
-                    order_data.get('shipper', ''),
-                    order_data.get('tracking_no', ''),
-                    order_data.get('location', ''),
-                    order_data.get('delivery', ''),
-                    order_data.get('notes', ''),
-                    order_data.get('color', ''),
-                    order_data.get('order_status', ''),
-                    current_datetime,
-                    order_data.get('shipped_date', '')
-                ))
+                               INSERT INTO orders (order_date, vendor, order_no, item_name,
+                                                   quantity, currency, amount, color,
+                                                   shipped_date, shipper, tracking_no, location,
+                                                   delivery, last_updated, notes, order_status)
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                               """, (
+                                   processed_data['order_date'],
+                                   processed_data['vendor'],
+                                   processed_data['order_no'],
+                                   processed_data['item_name'],
+                                   processed_data.get('quantity'),
+                                   processed_data['currency'],
+                                   processed_data['amount'],
+                                   processed_data['color'],
+                                   processed_data.get('shipped_date'),
+                                   processed_data.get('shipper'),
+                                   processed_data.get('tracking_no'),
+                                   processed_data.get('location'),
+                                   processed_data.get('delivery'),
+                                   current_datetime,
+                                   processed_data.get('notes'),
+                                   processed_data['order_status']
+                               ))
                 conn.commit()
             except Exception as e:
                 conn.rollback()
@@ -142,40 +132,44 @@ class OrdersDB:
         with get_db_connection() as conn:
             try:
                 cursor = conn.cursor()
+                processed_data = process_record_data(order_data, get_order_not_null_columns())
+
                 cursor.execute("""
-                    UPDATE orders SET 
-                        order_date = COALESCE(NULLIF(?, ''), order_date),
-                        vendor = COALESCE(NULLIF(?, ''), vendor),
-                        item_name = COALESCE(NULLIF(?, ''), item_name),
-                        shipper = ?,
-                        tracking_no = ?,
-                        location = ?,
-                        amount = COALESCE(NULLIF(?, ''), amount),
-                        currency = ?,
-                        last_updated = ?,
-                        shipped_date = ?,
-                        notes = ?,
-                        order_status = COALESCE(NULLIF(?, ''), order_status),
-                        color = ?,
-                        delivery = ?
-                    WHERE order_no = ?
-                """, (
-                    order_data["order_date"],
-                    order_data["vendor"],
-                    order_data["item_name"],
-                    order_data["shipper"],
-                    order_data["tracking_no"],
-                    order_data["location"],
-                    order_data["amount"],
-                    order_data["currency"],
-                    order_data["last_updated"],
-                    order_data["shipped_date"],
-                    order_data["notes"],
-                    order_data["order_status"],
-                    order_data["color"],
-                    order_data["delivery"],
-                    order_no,
-                ))
+                               UPDATE orders
+                               SET order_date   = COALESCE(NULLIF(?, ''), order_date),
+                                   vendor       = COALESCE(NULLIF(?, ''), vendor),
+                                   item_name    = COALESCE(NULLIF(?, ''), item_name),
+                                   quantity     = ?,
+                                   currency     = COALESCE(NULLIF(?, ''), currency),
+                                   amount       = COALESCE(NULLIF(?, ''), amount),
+                                   color        = COALESCE(NULLIF(?, ''), color),
+                                   shipped_date = ?,
+                                   shipper      = ?,
+                                   tracking_no  = ?,
+                                   location     = ?,
+                                   delivery     = ?,
+                                   last_updated = COALESCE(NULLIF(?, ''), last_updated),
+                                   notes        = ?,
+                                   order_status = COALESCE(NULLIF(?, ''), order_status)
+                               WHERE order_no = ?
+                               """, (
+                                   processed_data["order_date"],
+                                   processed_data["vendor"],
+                                   processed_data["item_name"],
+                                   processed_data.get("quantity"),
+                                   processed_data["currency"],
+                                   processed_data["amount"],
+                                   processed_data["color"],
+                                   processed_data.get("shipped_date"),
+                                   processed_data.get("shipper"),
+                                   processed_data.get("tracking_no"),
+                                   processed_data.get("location"),
+                                   processed_data.get("delivery"),
+                                   processed_data["last_updated"],
+                                   processed_data.get("notes"),
+                                   processed_data["order_status"],
+                                   order_no
+                               ))
                 conn.commit()
             except Exception as e:
                 conn.rollback()
@@ -205,50 +199,40 @@ class OrdersDB:
     ) -> Dict[str, float]:
         """
         Get currency totals for archived orders with filters applied
-
-        Returns:
-            Dictionary with currency codes as keys and total amounts as values
         """
         with get_db_connection() as conn:
             try:
                 cursor = conn.cursor()
 
                 base_query = """
-                    SELECT currency, SUM(CAST(amount as REAL)) as total
-                    FROM orders 
-                    WHERE order_status IN ('completed', 'cancelled')
-                    AND amount IS NOT NULL 
-                    AND amount != ''
-                    AND currency IS NOT NULL 
-                    AND currency != ''
-                """
+                             SELECT currency, SUM(CAST(amount as REAL)) as total
+                             FROM orders
+                             WHERE order_status IN ('completed', 'cancelled')
+                               AND amount IS NOT NULL
+                               AND amount != ''
+                               AND currency IS NOT NULL
+                               AND currency != '' \
+                             """
 
-                query_params = []
+                # Build filter conditions
+                status_conditions = build_status_filter_conditions(status_filter)
+                date_conditions = build_date_filter_conditions(year_filter, month_filter)
+                query_conditions, query_params = combine_filter_conditions(
+                    status_conditions, date_conditions
+                )
 
-                if status_filter:
-                    base_query += " AND order_status = ?"
-                    query_params.append(status_filter)
+                full_query = base_query + query_conditions + " GROUP BY currency ORDER BY currency"
 
-                if year_filter:
-                    base_query += " AND strftime('%Y', order_date) = ?"
-                    query_params.append(year_filter)
-
-                if month_filter:
-                    base_query += " AND strftime('%m', order_date) = ?"
-                    query_params.append(month_filter)
-
-                base_query += " GROUP BY currency ORDER BY currency"
-
-                cursor.execute(base_query, query_params)
+                cursor.execute(full_query, query_params)
                 results = cursor.fetchall()
 
-                # Convert to dictionary
+                # Convert to dictionary with proper formatting
                 totals = {}
                 for row in results:
                     currency = row['currency']
                     total = row['total']
                     if currency and total is not None:
-                        totals[currency] = total
+                        totals[currency] = float(f"{total:.2f}")
 
                 return totals
 
@@ -266,34 +250,19 @@ class OrdersDB:
     ) -> Tuple[List[Dict], List[str], List[Tuple[str, str]], Dict, Dict[str, float]]:
         """
         Get archived orders with optional filters and pagination
-
-        Args:
-            status_filter: Filter by order status
-            year_filter: Filter by year
-            month_filter: Filter by month
-            page: Page number (starting from 1)
-            limit: Number of orders per page
-
-        Returns:
-            Tuple containing:
-                - List of orders for the current page
-                - Available years for filtering
-                - Available months for filtering
-                - Pagination information dictionary
-                - Currency totals dictionary
         """
         with get_db_connection() as conn:
             try:
                 cursor = conn.cursor()
 
+                # Get available filter options
                 cursor.execute("""
-                    SELECT DISTINCT 
-                        strftime('%Y', order_date) as year,
-                        strftime('%m', order_date) as month
-                    FROM orders 
-                    WHERE order_status IN ('completed', 'cancelled')
-                    ORDER BY year DESC, month DESC
-                """)
+                               SELECT DISTINCT strftime('%Y', order_date) as year,
+                                               strftime('%m', order_date) as month
+                               FROM orders
+                               WHERE order_status IN ('completed', 'cancelled')
+                               ORDER BY year DESC, month DESC
+                               """)
                 dates = cursor.fetchall()
 
                 available_years = sorted(set(row['year'] for row in dates), reverse=True) if dates else []
@@ -309,45 +278,29 @@ class OrdersDB:
                     WHERE order_status IN ('completed', 'cancelled')
                 """
 
-                query_params = []
+                # Build filter conditions
+                status_conditions = build_status_filter_conditions(status_filter)
+                date_conditions = build_date_filter_conditions(year_filter, month_filter)
+                query_conditions, query_params = combine_filter_conditions(
+                    status_conditions, date_conditions
+                )
 
-                if status_filter:
-                    base_query += " AND order_status = ?"
-                    query_params.append(status_filter)
-
-                if year_filter:
-                    base_query += " AND strftime('%Y', order_date) = ?"
-                    query_params.append(year_filter)
-
-                if month_filter:
-                    base_query += " AND strftime('%m', order_date) = ?"
-                    query_params.append(month_filter)
-
-                count_query = f"SELECT COUNT(*) as total {base_query}"
+                # Get total count
+                count_query = f"SELECT COUNT(*) as total {base_query}{query_conditions}"
                 cursor.execute(count_query, query_params)
                 total_count = cursor.fetchone()['total']
 
+                # Get paginated data
                 offset = (page - 1) * limit
-                total_pages = (total_count + limit - 1) // limit
-
                 data_query = f"""
-                    SELECT * {base_query}
+                    SELECT * {base_query}{query_conditions}
                     ORDER BY order_date DESC, last_updated DESC
                     LIMIT ? OFFSET ?
                 """
                 cursor.execute(data_query, query_params + [limit, offset])
                 orders = [format_order_dict(row) for row in cursor.fetchall()]
 
-                pagination = {
-                    'current_page': page,
-                    'total_pages': total_pages,
-                    'total_count': total_count,
-                    'has_prev': page > 1,
-                    'has_next': page < total_pages,
-                    'limit': limit
-                }
-
-                # Get currency totals
+                pagination = create_pagination_info(page, total_count, limit)
                 currency_totals = OrdersDB.get_archived_orders_totals(
                     status_filter, year_filter, month_filter
                 )
@@ -369,12 +322,23 @@ class OrdersDB:
         with get_db_connection() as conn:
             try:
                 query = """
-                    SELECT order_date, vendor, order_no, item_name, shipper, tracking_no, 
-                           location, amount, currency, shipped_date, notes, order_status, 
-                           last_updated, color
-                    FROM orders 
-                    WHERE order_status IN ('completed', 'cancelled')
-                """
+                        SELECT order_date, \
+                               vendor, \
+                               order_no, \
+                               item_name, \
+                               quantity,
+                               currency, \
+                               amount, \
+                               shipped_date, \
+                               shipper, \
+                               tracking_no,
+                               location, \
+                               last_updated, \
+                               notes, \
+                               order_status
+                        FROM orders
+                        WHERE order_status IN ('completed', 'cancelled')
+                        """
                 params = []
 
                 if status_filter:
