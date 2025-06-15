@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, request, jsonify
 from config import logger
 from models.orders import OrdersDB
 from utils.csv_helpers import create_csv_response, build_export_filename
-from utils.error_handlers import handle_route_error
+from utils.event_handlers import handle_route_error
 from utils.pagination import validate_page_number
 from utils.request_helpers import extract_filters
 
