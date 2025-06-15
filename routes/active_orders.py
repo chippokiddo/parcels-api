@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, redirect, render_template, request, url_fo
 
 from config import logger
 from models.orders import OrdersDB
-from utils.error_handlers import handle_api_error, handle_route_error
+from utils.event_handlers import handle_api_error, handle_route_error
 from utils.request_helpers import extract_form_data, validate_required_fields
 from utils.response_helpers import success_response, error_response
 from utils.route_helpers import (
