@@ -177,7 +177,7 @@ This repository contains only the backend API code. To integrate with a frontend
    | `templates/index.html`   | For displaying active orders   |
    | `templates/form.html`    | For the order creation form    |
    | `templates/edit.html`    | For the order editing form     |
-   | `templates.archive.html` | For displaying archived orders |
+   | `templates/archive.html` | For displaying archived orders |
 
 2. Make sure your frontend forms match the expected form field names in the routes
 
