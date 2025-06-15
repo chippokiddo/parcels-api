@@ -25,6 +25,7 @@ This repository contains only the backend portion of the Parcels order tracking 
 - Filtering and searching capabilities
 - CSV export functionality
 - SQLite database integration
+- Pagination for archived orders
 
 ## Project Structure
 
@@ -41,7 +42,16 @@ This repository contains only the backend portion of the Parcels order tracking 
 │   └── archived_orders.py		# Archived order routes
 ├── utils/
 │   ├── __init__.py
+│   ├── csv_helpers.py			# CSV creation utilities
+│   ├── data_processing.py		# Data processer
 │   ├── database.py			# Database connection utilities
+│   ├── event_handlers.py		# Standardized error handler
+│   ├── formatters.py			# Monetary amount formatter
+│   ├── order_helpers.py		# Order dictionary
+│   ├── pagination.py			# Pagination validation and creation
+│   ├── query_builders.py		# Query condition builder
+│   ├── request_helpers.py		# Requests utities
+│   ├── route_helpers.py		# Routing utilities
 │   └── shipping.py			# Shipping carrier tracking URL generation
 ├── .env.example
 ├── .gitignore
@@ -143,17 +153,18 @@ The API will be available at `http://localhost:5000`.
 | `vendor`       | Supplier name                        |
 | `order_no`     | Unique order identifier              |
 | `item_name`    | Ordered item description             |
-| `amount`       | Order amount                         |
+| `quantity`     | Quantity of items                    |
+| `color`        | Order color indicator                |
 | `currency`     | Payment currency                     |
+| `amount`       | Order amount                         |
+| `shipped_date` | Shipment dispatch date               |
 | `shipper`      | Shipping carrier (FedEx, UPS, etc.)  |
 | `tracking_no`  | Shipment tracking number             |
 | `location`     | Current location                     |
 | `delivery`     | Delivery details                     |
-| `notes`        | Additional remarks                   |
-| `color`        | Order color indicator                |
-| `order_status` | Status (active, completed, canceled) |
 | `last_updated` | Last modification timestamp          |
-| `shipped_date` | Shipment dispatch date               |
+| `notes`        | Additional remarks                   |
+| `order_status` | Status (active, completed, canceled) |
 
 ## Frontend Integration
 
