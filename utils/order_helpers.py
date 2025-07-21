@@ -1,40 +1,31 @@
-import sqlite3
-from typing import Dict
-
-from utils.shipping import get_tracking_url
-from .formatters import format_amount, format_record_dict
+from typing import Tuple, Dict
 
 
-def format_order_dict(order: sqlite3.Row) -> Dict:
+def format_amount(amount) -> Tuple[str, str]:
     """
-    Format order dictionary with order-specific fields
+    Format amount with proper decimal places
+    Returns: (amount_formatted, amount_display)
     """
-    order_dict = format_record_dict(order)
-    if not order_dict:
+    if amount is None or amount == '':
+        return '', ''
+
+    try:
+        amount_value = float(amount)
+        return f"{amount_value:.2f}", f"{amount_value:,.2f}"
+    except (ValueError, TypeError):
+        return str(amount), str(amount)
+
+
+def format_record_dict(record, none_replacement='') -> Dict:
+    """
+    Format database record dictionary and handle None values
+    """
+    if not record:
         return {}
 
-    # Add amount formatting
-    if order_dict.get('amount') and order_dict['amount'] != '':
-        order_dict['amount_formatted'], order_dict['amount_display'] = format_amount(order_dict['amount'])
-    else:
-        order_dict['amount_formatted'] = ''
-        order_dict['amount_display'] = ''
+    record_dict = dict(record)
+    for key in record_dict:
+        if record_dict[key] is None:
+            record_dict[key] = none_replacement
 
-    # Add tracking URL if available
-    if order_dict.get('shipper') and order_dict.get('tracking_no'):
-        order_dict['tracking_url'] = get_tracking_url(
-            order_dict['shipper'],
-            order_dict['tracking_no']
-        )
-
-    return order_dict
-
-
-def get_order_not_null_columns() -> set:
-    """
-    Get the set of columns that should not be null for orders
-    """
-    return {
-        'order_date', 'vendor', 'item_name',
-        'order_status', 'color', 'currency', 'amount', 'last_updated'
-    }
+    return record_dict
